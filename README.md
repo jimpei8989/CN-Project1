@@ -1,6 +1,7 @@
 # Computer Network - Project 1
 
-<h6 style="text-align: right">Wu-Jun Pei (B06902029)</h6>
+###### By: Wu-Jun Pei (B06902029)
+
 ### Useful Links
 
 -   [Course Website](http://www.cmlab.csie.ntu.edu.tw/~chenyuyang/CN2019/index.html)
