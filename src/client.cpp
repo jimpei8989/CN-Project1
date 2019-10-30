@@ -64,7 +64,9 @@ int ping(struct sockaddr_in serverAddr, int timeout, int number) {
     char serverIP[128], clientIP[128];
     strncpy(serverIP, inet_ntoa(serverAddr.sin_addr), 128);
     int serverPort = ntohs(serverAddr.sin_port);
-    fprintf(stderr, "| PINGING -> %s : %d\n", serverIP, serverPort);
+    if (verbose) {
+        fprintf(stderr, "| PINGING -> %s : %d\n", serverIP, serverPort);
+    }
 
     int clientSocket;
     // TCP socket -> connect
