@@ -16,17 +16,10 @@
 #define verbose 0
 #endif
 
-#ifndef stress
-#define stress 0
-#endif
-
-
 const int MAX_CLIENTS = 256;
 const int MAX_BUFLEN = 1024;
 
 int main(int argc, char **argv) {
-    srand(time(NULL));
-
     // Handle Arguments
     uint16_t listenPort = 0;
     if (argc != 2 || sscanf(argv[1], "%hu", &listenPort) != 1) {
@@ -64,7 +57,7 @@ int main(int argc, char **argv) {
     }
 
     char buf[MAX_BUFLEN + 1];
-    int buflen, maxfd, numClients, clientfds[MAX_CLIENTS] = {}, tmpfd;
+    int maxfd, clientfds[MAX_CLIENTS] = {}, tmpfd;
     fd_set fds;
 
     struct sockaddr_in clientAddr;
@@ -113,7 +106,7 @@ int main(int argc, char **argv) {
         // Perform Operations
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if ((tmpfd = clientfds[i]) != 0 && FD_ISSET(tmpfd, &fds)) {
-                buflen = recv(tmpfd, buf, MAX_BUFLEN, 0);
+                ssize_t buflen = recv(tmpfd, buf, MAX_BUFLEN, 0);
                 if (buflen < 0) {
                     fprintf(stderr, "! Error : Recving\n");
                 } else if (buflen == 0) {
@@ -125,12 +118,6 @@ int main(int argc, char **argv) {
                     close(tmpfd);
                     clientfds[i] = 0;
                 } else {
-                    if (stress && rand() % 10 < 2) {
-                        if (verbose) {
-                            fprintf(stderr, "\% Server fake dead for 5000us\n");
-                        }
-                        usleep(500 * 1000);
-                    }
                     buf[buflen] = '\0';
                     send(tmpfd, buf, strlen(buf), 0);
                     if (verbose) {

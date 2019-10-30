@@ -36,10 +36,8 @@ int handleArguments(int argc, char **argv, int &number, int &timeout, sockaddrLi
             server.sin_family = AF_INET;
 
             if ((he = gethostbyname(addr)) != NULL) {
-                int iport;
                 server.sin_addr = **(struct in_addr**)he->h_addr_list;
-                sscanf(port, "%hu", &iport);
-                server.sin_port = htons(iport);
+                server.sin_port = htons((uint16_t)atoi(port));
             } else {
                 fprintf(stderr, "! Error : gethostbyname\n");
                 return -1;
@@ -51,7 +49,7 @@ int handleArguments(int argc, char **argv, int &number, int &timeout, sockaddrLi
         fprintf(stderr, "Numbers : %d\n", number);
         fprintf(stderr, "Timeout : %d\n", timeout);
         fprintf(stderr, "Servers :\n");
-        for (int i = 0; i < servers.size(); i++) {
+        for (size_t i = 0; i < servers.size(); i++) {
             fprintf(stderr, " - %s : %d\n", inet_ntoa(servers[i].sin_addr), ntohs(servers[i].sin_port));
         }
     }
@@ -89,7 +87,6 @@ int ping(struct sockaddr_in serverAddr, int timeout, int number) {
     fd_set fds;
 
     char buf[MAX_BUFLEN + 1] = "";
-    int buflen;
     
     struct timeval beginTS;
     gettimeofday(&beginTS, NULL);
@@ -98,13 +95,13 @@ int ping(struct sockaddr_in serverAddr, int timeout, int number) {
         struct timeval sendTS, recvTS;
         gettimeofday(&sendTS, NULL);
 
-        int64_t uFromBegin = uGetDuration(beginTS, sendTS);
+        int64_t uFromBeginToSend = uGetDuration(beginTS, sendTS);
 
         // Send Pocket
-        sprintf(buf, "^%d|%d|%s|%d|%s|%d", i, (int)uFromBegin, serverIP, serverPort, clientIP, clientPort);
+        sprintf(buf, "^%d|%d|%s|%d|%s|%d", i, (int)uFromBeginToSend, serverIP, serverPort, clientIP, clientPort);
         send(clientSocket, buf, strlen(buf), 0);
         if (verbose) {
-            fprintf(stderr, "[ Successfully Sent (INDEX : %d; TS : %d)\n", i, sendTS);
+            fprintf(stderr, "[ Successfully Sent (INDEX : %d; TS : %ld)\n", i, uFromBeginToSend);
             fprintf(stderr, "\t\t~ SERVER IP : %s; SERVER PORT : %d\n", serverIP, serverPort);
             fprintf(stderr, "\t\t~ MSG: \'%s\'\n", buf);
         }
@@ -135,8 +132,10 @@ int ping(struct sockaddr_in serverAddr, int timeout, int number) {
                     int64_t uRTT = uGetDuration(sendTS, recvTS);
                     int64_t mRTT = uRTT / 1000;
 
+                    int64_t uFromBeginToRecv = uGetDuration(beginTS, recvTS);
+
                     memset(buf, 0, MAX_BUFLEN);
-                    buflen = recv(clientSocket, buf, MAX_BUFLEN, 0);
+                    ssize_t buflen = recv(clientSocket, buf, MAX_BUFLEN, 0);
                     if (buflen == 0) {
                         // Connection Lost
                         fprintf(stderr, "@ Connection Lost -> IP : %s; PORT : %d\n", \
@@ -155,12 +154,15 @@ int ping(struct sockaddr_in serverAddr, int timeout, int number) {
 
                         // Receive Response
                         if (done && mRTT <= timeout) {
-                            fprintf(stdout, "recv from %s:%d, RTT = %.3f msec\n", serverIP, serverPort, (float)uRTT / 1000);
+                            fprintf(stdout, "recv from %s:%d, RTT = %.3f msec\n",
+                                    serverIP, serverPort, (float)uRTT / 1000);
                             if (verbose) {
-                                fprintf(stderr, "] Successful Received (INDEX : %d; SEND TS : %d; RECV TS : %d)\n", i, sendTS, recvTS);
-                                fprintf(stderr, "\t\t~ SERVER IP : %s; SERVER PORT : %d\n", serverIP, serverPort);
+                                fprintf(stderr, "] Successful Received (INDEX : %d; SEND TS : %ld; RECV TS : %ld)\n",
+                                        i, uFromBeginToSend, uFromBeginToRecv);
+                                fprintf(stderr, "\t\t~ SERVER IP : %s; SERVER PORT : %d\n",
+                                        serverIP, serverPort);
                             }
-                            usleep(timeout * 1000 - mRTT);
+                            usleep((uint32_t)(timeout * 1000 - mRTT));
                         }
                     }
                 }
@@ -172,7 +174,6 @@ int ping(struct sockaddr_in serverAddr, int timeout, int number) {
 }
 
 int main(int argc, char **argv) {
-    fprintf(stderr, "%d\n", CLOCKS_PER_SEC);
     int number = 0, timeout = 1000;
     sockaddrList servers;
 
@@ -181,7 +182,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    for (int i = 0; i < servers.size(); i++) {
+    for (size_t i = 0; i < servers.size(); i++) {
         int pid = fork();
         if (pid == 0) {
             if (ping(servers[i], timeout, number) == 0) {
@@ -199,7 +200,7 @@ int main(int argc, char **argv) {
     }
 
     // Wait Until All Childs Finish
-    for (int i = 0; i < servers.size(); i++)
+    for (size_t i = 0; i < servers.size(); i++)
         wait(NULL);
 
     return 0;
