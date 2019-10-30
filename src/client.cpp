@@ -61,10 +61,12 @@ int64_t uGetDuration(struct timeval a, struct timeval b) {
 }
 
 int ping(struct sockaddr_in serverAddr, int timeout, int number) {
-    int clientSocket;
-    char *serverIP = inet_ntoa(serverAddr.sin_addr);
+    char serverIP[128], clientIP[128];
+    strncpy(serverIP, inet_ntoa(serverAddr.sin_addr), 128);
     int serverPort = ntohs(serverAddr.sin_port);
+    fprintf(stderr, "| PINGING -> %s : %d\n", serverIP, serverPort);
 
+    int clientSocket;
     // TCP socket -> connect
     if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         fprintf(stderr, "! Error : creating socket (IP : %s; PORT : %d)\n", serverIP, serverPort);
@@ -81,7 +83,7 @@ int ping(struct sockaddr_in serverAddr, int timeout, int number) {
     socklen_t addrLen = sizeof(clientAddr);
     getsockname(clientSocket, (struct sockaddr*)&clientAddr, &addrLen);
 
-    char *clientIP = inet_ntoa(clientAddr.sin_addr);
+    strncpy(clientIP, inet_ntoa(clientAddr.sin_addr), 128);
     int clientPort = ntohs(clientAddr.sin_port);
 
     fd_set fds;
